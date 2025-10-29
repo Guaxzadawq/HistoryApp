@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -272,7 +273,7 @@
 
     <script>
         // IPs permitidos - ADICIONE SEUS IPs AQUI!
-        const allowedIPs = ['177.39.158.195', '177.39.158.195', '10.0.0.1'];
+        const allowedIPs = ['192.168.1.100', '127.0.0.1', '10.0.0.1'];
         
         // Elementos DOM
         const chatContainer = document.getElementById('chatContainer');
@@ -285,25 +286,16 @@
         // Chave para salvar no localStorage
         const STORAGE_KEY = 'chat_messages';
         
-        // Função para obter IP com múltiplos fallbacks
+        // Função para obter IP
         async function getUserIP() {
-            const services = [
-                'https://api.ipify.org?format=json',
-                'https://api64.ipify.org?format=json',
-                'https://ipinfo.io/json'
-            ];
-            
-            for (let service of services) {
-                try {
-                    const response = await fetch(service, { timeout: 5000 });
-                    const data = await response.json();
-                    return data.ip || data.ip_address || 'unknown';
-                } catch (error) {
-                    console.log('Serviço falhou:', service);
-                    continue;
-                }
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                console.error('Erro ao obter IP:', error);
+                return 'unknown';
             }
-            return 'unknown';
         }
         
         // Função para verificar se o IP tem acesso
@@ -417,38 +409,9 @@
             });
         }
         
-        // Inicialização
-        async function init() {
-            // ESCOLHA UM MÉTODO:
-            
-            // MÉTODO 1: Verificação por IP (pode falhar no Sketchware)
-            try {
-                const userIP = await getUserIP();
-                const hasAccess = checkIPAccess(userIP);
-                
-                if (!hasAccess) {
-                    console.log('Usuário sem acesso - escondendo input');
-                    inputContainer.style.display = 'none';
-                    return;
-                }
-            } catch (error) {
-                console.log('Erro na verificação de IP, usando método 2');
-                // Se falhar, vai para o método 2
-            }
-            
-            // MÉTODO 2: Verificação por parâmetro URL (MAIS CONFIÁVEL)
-            const urlParams = new URLSearchParams(window.location.search);
-            const accessKey = urlParams.get('access');
-            
-            // Se não tiver a chave de acesso, esconde tudo
-            if (accessKey !== 'true') {
-                console.log('Sem chave de acesso - escondendo input');
-                inputContainer.style.display = 'none';
-                return;
-            }
-            
-            // SE CHEGOU AQUI: usuário tem acesso
-            console.log('Usuário com acesso - mostrando input');
+        // Inicialização para usuários COM acesso
+        function setupForAuthorizedUsers() {
+            console.log('Configurando para usuário autorizado');
             
             // Carregar mensagens
             loadAllMessages();
@@ -470,8 +433,36 @@
             messageInput.focus();
         }
         
+        // Inicialização
+        async function init() {
+            // Primeiro tenta verificar por IP
+            try {
+                const userIP = await getUserIP();
+                const hasAccess = checkIPAccess(userIP);
+                
+                if (hasAccess) {
+                    console.log('Usuário tem acesso por IP');
+                    setupForAuthorizedUsers();
+                    return;
+                } else {
+                    console.log('Usuário SEM acesso por IP - escondendo input');
+                    inputContainer.style.display = 'none';
+                    loadAllMessages(); // Apenas carrega mensagens para visualização
+                    return;
+                }
+            } catch (error) {
+                console.log('Erro na verificação de IP:', error);
+                // Se falhar a verificação por IP, continua para carregar apenas as mensagens
+            }
+            
+            // Se chegou aqui, é usuário sem acesso ou com erro na verificação
+            console.log('Usuário sem acesso - apenas visualização');
+            inputContainer.style.display = 'none';
+            loadAllMessages(); // Apenas carrega mensagens para visualização
+        }
+        
         // Iniciar
         init();
     </script>
 </body>
-</html>
+            </html>
